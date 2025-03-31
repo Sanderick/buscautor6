@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscador de Autores Literarios</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        input {
+            width: 60%;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #resultado {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+        li {
+            background: #f9f9f9;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 3px;
+            border-left: 5px solid #007BFF;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Buscador de Autores Literarios</h1>
+    <input type="text" id="autor" placeholder="Escribe el nombre de un autor...">
+    <button onclick="buscarAutor()">Buscar</button>
+
+    <div id="resultado"></div>
+
+    <script>
+        async function buscarAutor() {
+            const autor = document.getElementById("autor").value.trim();
+            if (!autor) {
+                alert("Por favor, ingresa un nombre de autor.");
+                return;
+            }
+
+            const resultadoDiv = document.getElementById("resultado");
+            resultadoDiv.innerHTML = "<p>Buscando información...</p>";
+
+            try {
+                // Buscar el autor en Open Library
+                const autorResponse = await fetch(`https://openlibrary.org/search/authors.json?q=${encodeURIComponent(autor)}`);
+                const autorData = await autorResponse.json();
+
+                if (!autorData.docs.length) {
+                    resultadoDiv.innerHTML = `<p>No se encontraron resultados para <strong>${autor}</strong>.</p>`;
+                    return;
+                }
+
+                const autorKey = autorData.docs[0].key; // Obtener la clave del autor
+
+                // Buscar sus obras
+                const obrasResponse = await fetch(`https://openlibrary.org/authors/${autorKey}/works.json`);
+                const obrasData = await obrasResponse.json();
+
+                if (!obrasData.entries.length) {
+                    resultadoDiv.innerHTML = `<p>No se encontraron obras para <strong>${autor}</strong>.</p>`;
+                    return;
+                }
+
+                // Ordenar por fecha de publicación (si está disponible)
+                const obrasOrdenadas = obrasData.entries
+                    .map(obra => ({
+                        titulo: obra.title,
+                        año: obra.first_publish_date ? parseInt(obra.first_publish_date) : "Desconocido"
+                    }))
+                    .sort((a, b) => (a.año === "Desconocido" ? 9999 : a.año) - (b.año === "Desconocido" ? 9999 : b.año));
+
+                resultadoDiv.innerHTML = `
+                    <h2>Obras de ${autorData.docs[0].name}</h2>
+                    <ul>${obrasOrdenadas.map(obra => `<li><strong>${obra.año}</strong> - ${obra.titulo}</li>`).join("")}</ul>
+                `;
+            } catch (error) {
+                resultadoDiv.innerHTML = `<p>Error al buscar la información. Intenta con otro autor.</p>`;
+            }
+        }
+    </script>
+
+</body>
+</html>
